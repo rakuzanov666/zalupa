@@ -1,76 +1,26 @@
-require('dotenv').config();
-const express = require('express');
-const { Client, GatewayIntentBits } = require('discord.js');
-
+const express = require("express");
+const axios = require("axios");
 const app = express();
-const port = process.env.PORT || 8000;
+const PORT = process.env.PORT || 3000;
 
-// Инициализация Discord клиента
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildMembers
-  ]
-});
+// Твой Discord ID
+const DISCORD_ID = "141026525409";
 
-let userActivity = {
-  status: 'offline',
-  activity: 'Нет активности',
-  color: '#747f8d'
-};
-
-// Укажи здесь свой Discord user ID
-const TARGET_USER_ID = '1229044115594018960'; // вставь свой ID
-
-client.once('ready', async () => {
-  console.log(`Бот запущен как ${client.user.tag}`);
-
-  const guilds = client.guilds.cache;
-  for (const [guildId, guild] of guilds) {
-    try {
-      const member = await guild.members.fetch(TARGET_USER_ID);
-      if (member) {
-        updateActivity(member);
-      }
-    } catch (e) {
-      console.log(`Ошибка при поиске участника: ${e.message}`);
-    }
+// Запрос к API Lanyard
+async function getDiscordActivity() {
+  try {
+    const res = await axios.get(`https://api.lanyard.rest/v1/users/${DISCORD_ID}`);
+    return res.data;
+  } catch (err) {
+    return { error: "Failed to fetch activity", details: err.message };
   }
-});
-
-// Обновление активности
-function updateActivity(member) {
-  const statusMap = {
-    online: '#3ba55c',
-    idle: '#faa61a',
-    dnd: '#ed4245',
-    offline: '#747f8d'
-  };
-
-  const presence = member.presence;
-  if (!presence) return;
-
-  const status = presence.status;
-  const activities = presence.activities;
-  const activity = activities.length > 0 ? activities[0].name : 'Нет активности';
-
-  userActivity = {
-    status,
-    activity,
-    color: statusMap[status] || '#747f8d'
-  };
 }
 
-// API endpoint
-app.get('/status', (req, res) => {
-  res.json(userActivity);
+app.get("/", async (req, res) => {
+  const data = await getDiscordActivity();
+  res.json(data);
 });
 
-// Старт Express
-app.listen(port, () => {
-  console.log(`API слушает на порту ${port}`);
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
 });
-
-// Логин в Discord
-client.login(process.env.DISCORD_TOKEN);
